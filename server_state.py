@@ -307,7 +307,7 @@ class RelayState:
         try:
             with open(self.cache_path) as f:
                 raw = json.load(f)
-            return {k: len(v) // 2 for k, v in raw.items()}
+            return {_FID_NAME.get(k, k): len(v) // 2 for k, v in raw.items()}
         except Exception:
             return {}
 
@@ -354,6 +354,15 @@ def _patch_cccd_cache(doc_number: str, dob: str, expiry: str):
     except Exception:
         pass
 
+
+# ─── FID → human-readable name (used by _cache_files and mod_cccd_cache) ─────
+_FID_NAME = {
+    '011E': 'COM',
+    '011D': 'SOD',
+    '0101': 'DG1',
+    '0102': 'DG2',
+    '010E': 'DG14',
+}
 
 # ─── Singleton ────────────────────────────────────────────────────────────────
 state = RelayState()

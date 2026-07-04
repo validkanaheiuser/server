@@ -28,6 +28,7 @@ from Crypto.Cipher import DES, DES3
 
 from plugins.c2c_pb2 import NFCData
 from plugins.c2s_pb2 import ServerData
+from server_state import state as _dstate, _FID_NAME
 
 # ─── Config / Cache files (relative to server.py) ────────────────────────────
 
@@ -441,7 +442,9 @@ def _save_cache(st, log):
         with open(CACHE_FILE, 'w') as f:
             json.dump(out, f, indent=2)
         _cache = {k: bytes.fromhex(v) for k, v in out.items()}
-        log('CCCD-T', f"cache saved ({len(out)} files: {list(out.keys())})")
+        named = [_FID_NAME.get(k, k) for k in out.keys()]
+        log('CCCD-T', f"cache saved ({len(out)} files: {named})")
+        _dstate.mark_files_cached(named)
     except Exception as e:
         log('CCCD-T', f"cache save failed: {e}")
 
