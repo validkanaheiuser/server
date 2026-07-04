@@ -1,0 +1,7 @@
+{
+  "_comment": "mode: train = record from real chip | serve = respond from cache",
+  "mode": "train",
+  "doc_number": "205010199",
+  "dob": "200305",
+  "expiry": "300320"
+}

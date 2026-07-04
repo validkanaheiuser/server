@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NFCGate Dashboard</title>
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #070C17;
+  --surface:   #0D1526;
+  --surface2:  #111E35;
+  --border:    #1A2C4A;
+  --border2:   #243A5E;
+  --green:     #00E676;
+  --green-dim: #00783D;
+  --green-bg:  rgba(0,230,118,.09);
+  --text:      #C8D8F0;
+  --text-dim:  #526180;
+  --text-mid:  #8BA0C0;
+  --red:       #FF4F5E;
+  --amber:     #FFB300;
+  --blue:      #4D9EFF;
+  --purple:    #B06EFF;
+  --teal:      #00CFB4;
+  --ok:        #00E676;
+  --mono:      'JetBrains Mono','Cascadia Code','Consolas','Courier New',monospace;
+  --sans:      system-ui,-apple-system,'Segoe UI',sans-serif;
+  --r:         6px;
+  --r-lg:      10px;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--sans);font-size:14px;
+  background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;
+  background:none;color:inherit}
+input,select{font-family:inherit;font-size:inherit}
+a{color:var(--green);text-decoration:none}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+#topbar{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;gap:16px;
+  padding:0 24px;height:52px;
+  background:rgba(7,12,23,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+#topbar .logo{
+  font-family:var(--mono);font-size:15px;font-weight:700;
+  color:var(--green);letter-spacing:.04em;
+}
+#topbar .logo span{color:var(--text-dim);font-weight:400}
+#topbar .sep{flex:1}
+#srv-status{
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;color:var(--text-mid);font-family:var(--mono);
+}
+#srv-status .dot{
+  width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 6px var(--green);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#clock{font-family:var(--mono);font-size:12px;color:var(--text-dim);
+  letter-spacing:.08em;min-width:68px;text-align:right}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+#main{max-width:1440px;margin:0 auto;padding:20px 24px 40px;
+  display:flex;flex-direction:column;gap:20px}
+
+/* ── Stat cards ──────────────────────────────────────────────────────────── */
+#stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px 18px;
+}
+.stat-val{
+  font-family:var(--mono);font-size:28px;font-weight:700;
+  color:var(--green);font-variant-numeric:tabular-nums;line-height:1.1;
+}
+.stat-lbl{font-size:11px;color:var(--text-dim);margin-top:4px;
+  text-transform:uppercase;letter-spacing:.06em}
+
+/* ── 2-col row ───────────────────────────────────────────────────────────── */
+#mid{display:grid;grid-template-columns:340px 1fr;gap:12px}
+
+/* ── Section header ──────────────────────────────────────────────────────── */
+.section{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);overflow:hidden;
+}
+.section-head{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  background:var(--surface2);
+}
+.section-head h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--text-mid);font-weight:600}
+.section-head .badge{
+  margin-left:auto;font-family:var(--mono);font-size:10px;
+  background:var(--border2);color:var(--text-dim);
+  padding:2px 7px;border-radius:20px;
+}
+.section-body{padding:12px}
+
+/* ── Device cards ────────────────────────────────────────────────────────── */
+#devices-list{display:flex;flex-direction:column;gap:8px}
+.dev-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:11px 13px;
+  display:flex;flex-direction:column;gap:5px;
+  border-left:3px solid var(--border2);transition:border-color .2s;
+}
+.dev-card.reader{border-left-color:var(--blue)}
+.dev-card.hce{border-left-color:var(--purple)}
+.dev-card.unknown{border-left-color:var(--text-dim)}
+.dev-top{display:flex;align-items:center;gap:8px}
+.dev-dot{width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 5px var(--green);flex-shrink:0}
+.dev-ip{font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600}
+.dev-role-chip{
+  font-size:10px;padding:2px 7px;border-radius:12px;
+  font-weight:600;letter-spacing:.04em;flex-shrink:0;
+}
+.dev-role-chip.reader{background:rgba(77,158,255,.15);color:var(--blue)}
+.dev-role-chip.hce{background:rgba(176,110,255,.15);color:var(--purple)}
+.dev-role-chip.unknown{background:var(--border);color:var(--text-dim)}
+.dev-meta{font-size:11px;color:var(--text-dim);font-family:var(--mono);
+  display:flex;gap:12px;flex-wrap:wrap}
+.dev-meta span{display:flex;gap:4px}
+.dev-meta .k{color:var(--text-dim)}
+.dev-meta .v{color:var(--text-mid)}
+
+/* ── Session cards ───────────────────────────────────────────────────────── */
+#sessions-list{display:flex;flex-direction:column;gap:10px}
+.sess-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:13px 15px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.sess-top{display:flex;align-items:center;gap:8px}
+.sess-id{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.sess-badge{font-size:10px;padding:2px 7px;border-radius:12px;
+  background:var(--green-bg);color:var(--green);font-weight:600;
+  border:1px solid var(--green-dim);letter-spacing:.04em}
+.sess-link{
+  display:flex;align-items:center;gap:0;
+  font-family:var(--mono);font-size:12px;
+}
+.sess-node{
+  background:var(--border2);border-radius:4px;
+  padding:5px 10px;color:var(--text-mid);white-space:nowrap;
+}
+.sess-node.reader{color:var(--blue)}
+.sess-node.hce{color:var(--purple)}
+.sess-wire{
+  flex:1;height:2px;background:linear-gradient(90deg,var(--blue),var(--purple));
+  position:relative;min-width:24px;
+}
+.sess-wire::after{
+  content:'';position:absolute;top:50%;right:0;transform:translateY(-50%);
+  width:6px;height:6px;border-radius:50%;background:var(--purple);
+}
+.sess-info{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;
+  font-family:var(--mono);color:var(--text-dim)}
+.sess-info .v{color:var(--text-mid)}
+.sess-cccd{
+  font-family:var(--mono);font-size:11px;color:var(--green);
+  background:var(--green-bg);border:1px solid var(--green-dim);
+  border-radius:4px;padding:3px 8px;
+}
+.sess-phase{display:flex;gap:6px;flex-wrap:wrap}
+.phase-tag{
+  font-size:10px;padding:2px 7px;border-radius:12px;
+  border:1px solid;letter-spacing:.03em;
+}
+.phase-tag.done{border-color:var(--green-dim);color:var(--green);
+  background:var(--green-bg)}
+.phase-tag.wait{border-color:var(--border2);color:var(--text-dim);
+  background:transparent}
+
+/* ── APDU log ────────────────────────────────────────────────────────────── */
+#log-wrap{overflow-x:auto}
+#apdu-log{
+  font-family:var(--mono);font-size:11.5px;line-height:1.6;
+  max-height:340px;overflow-y:auto;
+  background:#040811;border-radius:var(--r);
+  border:1px solid var(--border);
+}
+#apdu-log table{width:100%;border-collapse:collapse;min-width:780px}
+#apdu-log thead tr{
+  position:sticky;top:0;background:#040811;z-index:10;
+}
+#apdu-log thead th{
+  padding:7px 12px;text-align:left;font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;
+  color:var(--text-dim);border-bottom:1px solid var(--border);
+  font-weight:600;white-space:nowrap;
+}
+#apdu-log tbody tr{border-left:3px solid transparent;
+  transition:background .1s}
+#apdu-log tbody tr:hover{background:rgba(255,255,255,.03)}
+#apdu-log tbody td{
+  padding:5px 12px;vertical-align:middle;white-space:nowrap;
+}
+/* Category stripes */
+#apdu-log tbody tr.cat-pace  {border-left-color:var(--purple)}
+#apdu-log tbody tr.cat-sm    {border-left-color:var(--teal)}
+#apdu-log tbody tr.cat-select{border-left-color:var(--blue)}
+#apdu-log tbody tr.cat-read  {border-left-color:#4D7FFF}
+#apdu-log tbody tr.cat-ok    {border-left-color:var(--green)}
+#apdu-log tbody tr.cat-error {border-left-color:var(--red)}
+#apdu-log tbody tr.cat-warning{border-left-color:var(--amber)}
+.log-ts  {color:var(--text-dim);min-width:90px}
+.log-sess{color:var(--text-dim);min-width:40px}
+.log-dir {min-width:70px;font-weight:600}
+.log-dir.to-chip  {color:var(--blue)}
+.log-dir.from-chip{color:var(--purple)}
+.log-desc{color:var(--text-mid);min-width:220px}
+.log-desc.cat-pace  {color:var(--purple)}
+.log-desc.cat-sm    {color:var(--teal)}
+.log-desc.cat-select{color:var(--blue)}
+.log-desc.cat-read  {color:#6AADFF}
+.log-desc.cat-ok    {color:var(--green)}
+.log-desc.cat-error {color:var(--red)}
+.log-desc.cat-warning{color:var(--amber)}
+.log-apdu{color:#3A5070;max-width:300px;overflow:hidden;text-overflow:ellipsis}
+.log-len {color:var(--text-dim);min-width:50px;text-align:right}
+.log-empty{padding:32px;text-align:center;color:var(--text-dim);
+  font-style:italic}
+
+/* ── CCCD table ──────────────────────────────────────────────────────────── */
+#cccd-section .section-body{padding:0}
+#cccd-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+#cccd-table thead th{
+  padding:9px 14px;text-align:left;font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;
+  color:var(--text-dim);background:var(--surface2);font-weight:600;
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+#cccd-table tbody tr{border-bottom:1px solid var(--border);
+  transition:background .1s}
+#cccd-table tbody tr:last-child{border-bottom:none}
+#cccd-table tbody tr:hover{background:var(--surface2)}
+#cccd-table td{padding:10px 14px;vertical-align:middle}
+.cccd-num{color:var(--text);font-weight:600}
+.cccd-date{color:var(--text-mid)}
+.cccd-status{display:flex;align-items:center;gap:5px}
+.cccd-status .dot{width:7px;height:7px;border-radius:50%}
+.cccd-status.trained .dot{background:var(--green)}
+.cccd-status.untrained .dot{background:var(--text-dim)}
+.cccd-status span{color:var(--text-mid)}
+.file-chips{display:flex;gap:4px;flex-wrap:wrap}
+.file-chip{
+  font-size:10px;padding:2px 6px;border-radius:4px;
+  border:1px solid;letter-spacing:.03em;
+}
+.file-chip.ok{border-color:var(--green-dim);color:var(--green);background:var(--green-bg)}
+.file-chip.no{border-color:var(--border2);color:var(--text-dim);background:transparent}
+.cccd-last{color:var(--text-dim)}
+.btn-del{
+  padding:4px 10px;border-radius:4px;font-size:11px;
+  border:1px solid var(--border2);color:var(--text-dim);
+  background:transparent;cursor:pointer;transition:all .15s;
+}
+.btn-del:hover{border-color:var(--red);color:var(--red)}
+.cccd-empty{padding:28px;text-align:center;color:var(--text-dim);
+  font-style:italic;font-family:var(--mono);font-size:12px}
+
+/* ── Add CCCD panel ──────────────────────────────────────────────────────── */
+#add-form{
+  display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;
+  padding:12px 16px;border-top:1px solid var(--border);
+  background:var(--surface2);
+}
+#add-form label{
+  font-size:11px;color:var(--text-dim);display:flex;flex-direction:column;gap:4px;
+}
+#add-form input{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:4px;padding:6px 10px;color:var(--text);
+  font-family:var(--mono);font-size:12px;width:140px;
+  transition:border-color .15s;
+}
+#add-form input:focus{border-color:var(--green);outline:none}
+#add-form input::placeholder{color:var(--text-dim)}
+.btn-add{
+  padding:7px 16px;border-radius:var(--r);font-size:12px;font-weight:600;
+  background:var(--green);color:#000;border:none;cursor:pointer;
+  letter-spacing:.03em;transition:opacity .15s;flex-shrink:0;
+  align-self:flex-end;
+}
+.btn-add:hover{opacity:.85}
+.btn-add:disabled{opacity:.4;cursor:not-allowed}
+#add-msg{font-size:11px;color:var(--green);font-family:var(--mono);align-self:center}
+
+/* ── Log controls ────────────────────────────────────────────────────────── */
+.log-controls{display:flex;gap:8px;align-items:center;margin-left:auto}
+.btn-sm{
+  padding:3px 10px;border-radius:4px;font-size:11px;
+  border:1px solid var(--border2);color:var(--text-dim);background:transparent;
+  cursor:pointer;transition:all .15s;
+}
+.btn-sm:hover{border-color:var(--green);color:var(--green)}
+.btn-sm.active{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+
+/* ── Mode switch ─────────────────────────────────────────────────────────── */
+#mode-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;background:var(--surface2);
+  border-radius:var(--r);border:1px solid var(--border);
+}
+#mode-row label{font-size:12px;color:var(--text-mid)}
+.mode-btn{
+  padding:5px 14px;border-radius:4px;font-size:12px;font-weight:600;
+  border:1px solid var(--border2);color:var(--text-dim);background:transparent;
+  cursor:pointer;transition:all .15s;
+}
+.mode-btn.active.train{background:rgba(255,179,0,.12);
+  border-color:var(--amber);color:var(--amber)}
+.mode-btn.active.serve{background:var(--green-bg);
+  border-color:var(--green);color:var(--green)}
+.mode-btn:hover:not(.active){border-color:var(--text-mid);color:var(--text)}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media(max-width:900px){
+  #stats{grid-template-columns:repeat(2,1fr)}
+  #mid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  #stats{grid-template-columns:repeat(2,1fr)}
+  #main{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div id="topbar">
+  <div class="logo">NFCGate<span>/dashboard</span></div>
+  <div id="srv-status">
+    <div class="dot"></div>
+    <span>Server :5566 đang chạy</span>
+  </div>
+  <div class="sep"></div>
+  <div id="clock">--:--:--</div>
+</div>
+
+<div id="main">
+
+  <!-- Mode switch -->
+  <div id="mode-row">
+    <label>Chế độ relay:</label>
+    <button class="mode-btn active train" id="btn-train" onclick="setMode('train')">Train — Ghi cache từ chip thật</button>
+    <button class="mode-btn serve" id="btn-serve" onclick="setMode('serve')">Serve — Trả dữ liệu từ cache</button>
+    <span id="mode-msg" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);margin-left:8px"></span>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats">
+    <div class="stat"><div class="stat-val" id="s-clients">0</div>
+      <div class="stat-lbl">Thiết bị kết nối</div></div>
+    <div class="stat"><div class="stat-val" id="s-sessions">0</div>
+      <div class="stat-lbl">Phiên relay đang hoạt động</div></div>
+    <div class="stat"><div class="stat-val" id="s-apdus">0</div>
+      <div class="stat-lbl">APDU đã chuyển tiếp</div></div>
+    <div class="stat"><div class="stat-val" id="s-cccd">0</div>
+      <div class="stat-lbl">CCCD đã đăng ký</div></div>
+  </div>
+
+  <!-- Devices + Sessions -->
+  <div id="mid">
+    <div class="section">
+      <div class="section-head">
+        <h2>Thiết bị kết nối</h2>
+        <span class="badge" id="dev-count">0</span>
+      </div>
+      <div class="section-body">
+        <div id="devices-list"><div class="log-empty">Chưa có thiết bị nào kết nối</div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <h2>Phiên relay đang hoạt động</h2>
+        <span class="badge" id="sess-count">0</span>
+      </div>
+      <div class="section-body">
+        <div id="sessions-list"><div class="log-empty">Chưa có phiên relay nào</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APDU log -->
+  <div class="section">
+    <div class="section-head">
+      <h2>Luồng APDU trực tiếp</h2>
+      <div class="log-controls">
+        <button class="btn-sm active" id="btn-auto" onclick="toggleAuto()">Tự cuộn</button>
+        <button class="btn-sm" onclick="clearLog()">Xóa log</button>
+        <span class="badge" id="apdu-count">0</span>
+      </div>
+    </div>
+    <div id="log-wrap">
+      <div id="apdu-log">
+        <table>
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Phiên</th>
+              <th>Chiều</th>
+              <th>Lệnh</th>
+              <th>Dữ liệu APDU (hex)</th>
+              <th style="text-align:right">Byte</th>
+            </tr>
+          </thead>
+          <tbody id="log-body">
+            <tr><td colspan="6" class="log-empty">Đang chờ dữ liệu APDU…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CCCD management -->
+  <div class="section" id="cccd-section">
+    <div class="section-head">
+      <h2>Quản lý CCCD đã đăng ký</h2>
+      <span class="badge" id="cccd-count">0</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="cccd-table">
+        <thead>
+          <tr>
+            <th>Số CCCD</th>
+            <th>Ngày sinh</th>
+            <th>Hết hạn</th>
+            <th>Trạng thái</th>
+            <th>Tệp đã cache</th>
+            <th>Đăng ký lúc</th>
+            <th>Dùng gần nhất</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cccd-body">
+          <tr><td colspan="8" class="cccd-empty">Chưa có CCCD nào được đăng ký</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="add-form">
+      <label>Số CCCD<input id="f-doc" type="text" placeholder="123456789" maxlength="12"></label>
+      <label>Ngày sinh (YYMMDD)<input id="f-dob" type="text" placeholder="850101" maxlength="6"></label>
+      <label>Ngày hết hạn (YYMMDD)<input id="f-exp" type="text" placeholder="300101" maxlength="6"></label>
+      <button class="btn-add" onclick="addCCCD()">+ Đăng ký CCCD</button>
+      <span id="add-msg"></span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let _data   = null;
+let _apdus  = [];
+let _total  = 0;
+let _auto   = true;
+let _paused = false;
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function tickClock() {
+  const n = new Date();
+  const p = v => String(v).padStart(2,'0');
+  document.getElementById('clock').textContent =
+    `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+}
+setInterval(tickClock, 1000); tickClock();
+
+// ── Polling ───────────────────────────────────────────────────────────────────
+async function poll() {
+  try {
+    const r = await fetch('/api/status');
+    if (!r.ok) return;
+    _data = await r.json();
+    render();
+  } catch(e) { /* server not ready */ }
+}
+setInterval(poll, 1500);
+poll();
+
+// ── SSE for APDU stream ───────────────────────────────────────────────────────
+(function initSSE() {
+  if (!window.EventSource) return;
+  const es = new EventSource('/events');
+  es.addEventListener('apdu', e => {
+    try {
+      const entry = JSON.parse(e.data);
+      _apdus.unshift(entry);
+      if (_apdus.length > 500) _apdus.length = 500;
+      _total++;
+      renderLog();
+    } catch(ex) {}
+  });
+  es.onerror = () => setTimeout(initSSE, 3000);
+})();
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  if (!_data) return;
+  const clients  = Object.values(_data.clients  || {});
+  const sessions = Object.values(_data.sessions || {});
+  const cccds    = Object.values(_data.cccd_list|| {});
+  const apdus    = _data.apdu_log || [];
+
+  // Merge SSE apdus with polled (SSE is primary, poll fills initial state)
+  if (_apdus.length === 0 && apdus.length > 0) {
+    _apdus = apdus.slice();
+    _total = apdus.length;
+  }
+
+  // Stats
+  qs('#s-clients').textContent  = clients.length;
+  qs('#s-sessions').textContent = sessions.length;
+  qs('#s-apdus').textContent    = _total || apdus.length;
+  qs('#s-cccd').textContent     = cccds.length;
+  qs('#dev-count').textContent  = clients.length;
+  qs('#sess-count').textContent = sessions.length;
+  qs('#cccd-count').textContent = cccds.length;
+
+  renderDevices(clients);
+  renderSessions(sessions, _data.clients || {});
+  renderLog();
+  renderCCCD(cccds, _data.cache_files || {});
+}
+
+// ── Devices ───────────────────────────────────────────────────────────────────
+function renderDevices(clients) {
+  const el = qs('#devices-list');
+  if (!clients.length) {
+    el.innerHTML = '<div class="log-empty">Chưa có thiết bị nào kết nối</div>';
+    return;
+  }
+  el.innerHTML = clients.map(c => {
+    const role = c.role || 'unknown';
+    const roleLabel = {reader:'ĐẦU ĐỌC', hce:'THẺ GIẢ (HCE)', unknown:'Chưa xác định'}[role] || role.toUpperCase();
+    return `<div class="dev-card ${role}">
+      <div class="dev-top">
+        <div class="dev-dot"></div>
+        <span class="dev-ip">${esc(c.ip)}:${c.port}</span>
+        <span class="dev-role-chip ${role}">${roleLabel}</span>
+      </div>
+      <div class="dev-meta">
+        <span><span class="k">Phiên:</span><span class="v">#${c.session ?? '—'}</span></span>
+        <span><span class="k">APDU:</span><span class="v">${c.apdu_count}</span></span>
+        <span><span class="k">Kết nối lúc:</span><span class="v">${esc(c.connected_at)}</span></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+function renderSessions(sessions, clients) {
+  const el = qs('#sessions-list');
+  if (!sessions.length) {
+    el.innerHTML = '<div class="log-empty">Chưa có phiên relay nào</div>';
+    return;
+  }
+  el.innerHTML = sessions.map(s => {
+    const reader = s.reader || '—';
+    const hce    = s.hce    || '—';
+    const cccdInfo = s.cccd
+      ? `<span class="sess-cccd">CCCD: ${mask(s.cccd.doc_number)}</span>` : '';
+    const paceTag = `<span class="phase-tag ${s.pace_done?'done':'wait'}">${s.pace_done?'✓ PACE':'PACE'}</span>`;
+    const bacTag  = `<span class="phase-tag ${s.bac_done?'done':'wait'}">${s.bac_done?'✓ BAC':'BAC'}</span>`;
+    const fileTag = s.current_file
+      ? `<span class="phase-tag done">Đang đọc: ${esc(s.current_file)}</span>` : '';
+    return `<div class="sess-card">
+      <div class="sess-top">
+        <span class="sess-id">Phiên</span>
+        <span class="sess-badge">RELAY ĐANG HOẠT ĐỘNG</span>
+        ${cccdInfo}
+      </div>
+      <div class="sess-link">
+        <span class="sess-node reader">${esc(reader)}</span>
+        <div class="sess-wire"></div>
+        <span class="sess-node hce">${esc(hce)}</span>
+      </div>
+      <div class="sess-info">
+        <span>Bắt đầu: <span class="v">${esc(s.start_time)}</span></span>
+        <span>APDU: <span class="v">${s.apdu_count}</span></span>
+      </div>
+      <div class="sess-phase">${paceTag}${bacTag}${fileTag}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── APDU log ──────────────────────────────────────────────────────────────────
+const MAX_ROWS = 200;
+function renderLog() {
+  const tbody = qs('#log-body');
+  const src = (_apdus.length ? _apdus : (_data?.apdu_log || [])).slice(0, MAX_ROWS);
+  qs('#apdu-count').textContent = _total || src.length;
+
+  if (!src.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="log-empty">Đang chờ dữ liệu APDU…</td></tr>';
+    return;
+  }
+  tbody.innerHTML = src.map(e => {
+    const cat  = e.cat  || e.category || 'default';
+    const dir  = e.dir  || e.direction || '';
+    const dirCls = dir.includes('→') ? 'to-chip' : 'from-chip';
+    return `<tr class="cat-${esc(cat)}">
+      <td class="log-ts">${esc(e.ts)}</td>
+      <td class="log-sess">#${e.session ?? '—'}</td>
+      <td class="log-dir ${dirCls}">${esc(dir)}</td>
+      <td class="log-desc cat-${esc(cat)}">${esc(e.desc || e.decoded || '')}</td>
+      <td class="log-apdu">${esc(e.apdu || '')}</td>
+      <td class="log-len">${e.len ?? ''}</td>
+    </tr>`;
+  }).join('');
+
+  if (_auto) {
+    const wrap = qs('#apdu-log');
+    wrap.scrollTop = 0; // newest at top
+  }
+}
+
+// ── CCCD table ────────────────────────────────────────────────────────────────
+const ALL_FILES = ['DG2','DG14','SOD'];
+function renderCCCD(cccds, cacheFiles) {
+  const tbody = qs('#cccd-body');
+  if (!cccds.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="cccd-empty">Chưa có CCCD nào được đăng ký<br>Đăng ký MRZ bên dưới hoặc từ NFCGate trên thiết bị đầu đọc.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = cccds.map(c => {
+    const trained = c.trained;
+    const files   = c.files || [];
+    const chips   = ALL_FILES.map(f => {
+      const has = files.includes(f) || !!cacheFiles[f];
+      return `<span class="file-chip ${has?'ok':'no'}">${f}${has?' ✓':' ✗'}</span>`;
+    }).join('');
+    const stCls = trained ? 'trained' : 'untrained';
+    const stLbl = trained ? 'Đã cache' : 'Chưa cache';
+    return `<tr>
+      <td class="cccd-num">${mask(c.doc_number)}</td>
+      <td class="cccd-date">${fmtDate(c.dob)}</td>
+      <td class="cccd-date">${fmtDate(c.expiry)}</td>
+      <td><div class="cccd-status ${stCls}"><div class="dot"></div><span>${stLbl}</span></div></td>
+      <td><div class="file-chips">${chips}</div></td>
+      <td class="cccd-last">${esc(c.enrolled_at||'—')}</td>
+      <td class="cccd-last">${esc(c.last_used||'—')}</td>
+      <td><button class="btn-del" onclick="deleteCCCD('${esc(c.doc_number)}')">Xóa</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function toggleAuto() {
+  _auto = !_auto;
+  const btn = qs('#btn-auto');
+  btn.textContent = _auto ? 'Tự cuộn' : 'Đã tạm dừng';
+  btn.classList.toggle('active', _auto);
+}
+
+function clearLog() {
+  _apdus = []; _total = 0;
+  qs('#log-body').innerHTML =
+    '<tr><td colspan="6" class="log-empty">Log đã được xóa</td></tr>';
+  qs('#apdu-count').textContent = '0';
+}
+
+async function setMode(mode) {
+  try {
+    await fetch('/api/mode', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({mode})});
+    const isTrain = mode === 'train';
+    qs('#btn-train').classList.toggle('active', isTrain);
+    qs('#btn-serve').classList.toggle('active', !isTrain);
+    qs('#mode-msg').textContent = `Đã chuyển sang chế độ ${mode === 'train' ? 'Train' : 'Serve'}`;
+    setTimeout(()=>{ qs('#mode-msg').textContent=''; }, 3000);
+  } catch(e) {
+    qs('#mode-msg').textContent = 'Không thể đổi chế độ';
+  }
+}
+
+async function addCCCD() {
+  const doc = qs('#f-doc').value.trim();
+  const dob = qs('#f-dob').value.trim();
+  const exp = qs('#f-exp').value.trim();
+  const msg = qs('#add-msg');
+  if (!doc || !dob || !exp) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Vui lòng điền đầy đủ thông tin';
+    return;
+  }
+  try {
+    const r = await fetch('/api/mrz', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({doc_number:doc, dob, expiry:exp})});
+    const d = await r.json();
+    msg.style.color = 'var(--green)';
+    msg.textContent = d.message || 'Đã đăng ký';
+    qs('#f-doc').value = qs('#f-dob').value = qs('#f-exp').value = '';
+    setTimeout(poll, 300);
+  } catch(e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Lỗi kết nối tới server';
+  }
+  setTimeout(()=>{ msg.textContent=''; }, 4000);
+}
+
+async function deleteCCCD(docNum) {
+  if (!confirm(`Xóa CCCD ${mask(docNum)}?`)) return;
+  await fetch('/api/cccd/delete', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({doc_number:docNum})});
+  setTimeout(poll, 200);
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function qs(sel) { return document.querySelector(sel); }
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function mask(s) {
+  if (!s) return '—';
+  s = String(s);
+  if (s.length <= 4) return '****';
+  return '****' + s.slice(-4);
+}
+function fmtDate(d) {
+  if (!d || d.length < 6) return d || '—';
+  return `${d.slice(4,6)}/${d.slice(2,4)}/${d.slice(0,2)}`;
+}
+</script>
+</body>
+</html>
