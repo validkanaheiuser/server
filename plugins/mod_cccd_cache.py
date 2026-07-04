@@ -37,18 +37,23 @@ CONFIG_FILE = os.path.join(_SERVER_DIR, 'cccd_config.json')
 CACHE_FILE  = os.path.join(_SERVER_DIR, 'cccd_cache.json')
 
 def _load_config():
-    cfg = {}
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE) as f:
-            cfg = json.load(f)
-    return cfg
+    if not os.path.exists(CONFIG_FILE):
+        return {}
+    try:
+        with open(CONFIG_FILE, encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, ValueError, OSError):
+        return {}
 
 def _load_cache():
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE) as f:
+    if not os.path.exists(CACHE_FILE):
+        return {}
+    try:
+        with open(CACHE_FILE, encoding='utf-8') as f:
             raw = json.load(f)
         return {k: bytes.fromhex(v) for k, v in raw.items()}
-    return {}
+    except (json.JSONDecodeError, ValueError, OSError):
+        return {}
 
 _cfg   = _load_config()
 _cache = _load_cache()
