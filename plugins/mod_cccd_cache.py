@@ -32,15 +32,24 @@ from server_state import state as _dstate, _FID_NAME
 
 # ─── Config / Cache files (relative to server.py) ────────────────────────────
 
-_SERVER_DIR = os.path.join(os.path.dirname(__file__), '..')
-CONFIG_FILE = os.path.join(_SERVER_DIR, 'cccd_config.json')
-CACHE_FILE  = os.path.join(_SERVER_DIR, 'cccd_cache.json')
+_SERVER_DIR   = os.path.join(os.path.dirname(__file__), '..')
+PROFILES_DIR  = os.path.join(_SERVER_DIR, 'cccd_profiles')
+CACHE_FILE    = os.path.join(_SERVER_DIR, 'cccd_cache.json')
 
 def _load_config():
-    if not os.path.exists(CONFIG_FILE):
+    """Load the most recently modified CCCD profile from cccd_profiles/."""
+    if not os.path.isdir(PROFILES_DIR):
         return {}
     try:
-        with open(CONFIG_FILE, encoding='utf-8') as f:
+        files = [
+            os.path.join(PROFILES_DIR, f)
+            for f in os.listdir(PROFILES_DIR)
+            if f.endswith('.json')
+        ]
+        if not files:
+            return {}
+        latest = max(files, key=os.path.getmtime)
+        with open(latest, encoding='utf-8') as f:
             return json.load(f)
     except (json.JSONDecodeError, ValueError, OSError):
         return {}

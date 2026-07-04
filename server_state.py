@@ -9,6 +9,11 @@ import json
 import queue
 from collections import deque
 
+# ─── Paths ────────────────────────────────────────────────────────────────────
+
+_SERVER_DIR   = os.path.dirname(os.path.abspath(__file__))
+_PROFILES_DIR = os.path.join(_SERVER_DIR, 'cccd_profiles')
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _now():    return datetime.datetime.now().strftime('%H:%M:%S')
@@ -165,6 +170,30 @@ class RelayState:
         self.cccd_list = {}    # doc_number → info dict
         self.cache_path = ''   # set by server at startup
         self._sse_queues = []  # list of queue.Queue for SSE clients
+        self._preload_profiles()
+
+    def _preload_profiles(self):
+        """Load all saved CCCD profiles from cccd_profiles/ into cccd_list at startup."""
+        if not os.path.isdir(_PROFILES_DIR):
+            return
+        for fname in sorted(os.listdir(_PROFILES_DIR)):
+            if not fname.endswith('.json'):
+                continue
+            try:
+                with open(os.path.join(_PROFILES_DIR, fname), encoding='utf-8') as f:
+                    p = json.load(f)
+                doc = p.get('doc_number', '')
+                if doc and doc not in self.cccd_list:
+                    self.cccd_list[doc] = {
+                        'doc_number': doc,
+                        'dob':        p.get('dob', ''),
+                        'expiry':     p.get('expiry', ''),
+                        'enrolled_at':p.get('enrolled_at', ''),
+                        'last_used':  None,
+                        'files': [], 'trained': False,
+                    }
+            except Exception:
+                continue
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -258,9 +287,7 @@ class RelayState:
                     'enrolled_at': _nowfull(), 'last_used': None,
                     'files': [], 'trained': False,
                 }
-        # Also refresh config file
-        _write_config(doc_number, dob, expiry)
-        # Update live module globals if cccd_cache is loaded
+        _write_profile(doc_number, dob, expiry)
         _patch_cccd_cache(doc_number, dob, expiry)
 
     def mark_files_cached(self, files: list):
@@ -276,6 +303,7 @@ class RelayState:
     def delete_cccd(self, doc_number: str):
         with self._lock:
             self.cccd_list.pop(doc_number, None)
+        _delete_profile(doc_number)
 
     # ── SSE helpers ───────────────────────────────────────────────────────────
 
@@ -323,21 +351,29 @@ class RelayState:
             }
 
 
-# ─── Config helpers ───────────────────────────────────────────────────────────
+# ─── Profile helpers ──────────────────────────────────────────────────────────
 
-_SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
-_CONFIG_PATH = os.path.join(_SERVER_DIR, 'cccd_config.json')
-
-
-def _write_config(doc_number: str, dob: str, expiry: str):
-    cfg = {
-        '_comment': 'mode: train = ghi từ chip thật | serve = trả từ cache',
-        'mode': 'train', 'doc_number': doc_number,
-        'dob': dob, 'expiry': expiry,
-    }
+def _write_profile(doc_number: str, dob: str, expiry: str):
+    """Write one JSON file per CCCD into cccd_profiles/."""
     try:
-        with open(_CONFIG_PATH, 'w') as f:
-            json.dump(cfg, f, indent=2, ensure_ascii=False)
+        os.makedirs(_PROFILES_DIR, exist_ok=True)
+        path = os.path.join(_PROFILES_DIR, f'{doc_number}.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump({
+                'doc_number': doc_number,
+                'dob': dob,
+                'expiry': expiry,
+                'enrolled_at': _nowfull(),
+            }, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def _delete_profile(doc_number: str):
+    try:
+        path = os.path.join(_PROFILES_DIR, f'{doc_number}.json')
+        if os.path.exists(path):
+            os.remove(path)
     except Exception:
         pass
 
